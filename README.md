@@ -3,16 +3,6 @@
 ## Overview
 This project analyzes Amazon sales data to provide insights into product performance, pricing strategies, customer behavior, and market trends. The analysis helps both sellers and customers make informed decisions based on comprehensive data analysis.
 
-## Project Structure
-```
-Amazon Sales/
-├── amazon.csv                 # Raw Amazon sales dataset
-├── amazon_cleaned.csv         # Cleaned dataset ready for analysis
-├── Amazon_Data_Cleaning_Basic.ipynb  # Jupyter notebook for data cleaning
-├── Amazon_Sales_Insights_Report.md   # Comprehensive analysis report
-└── README.md                  # This file
-```
-
 ## Features
 - **Data Cleaning and Preparation**
   - Price standardization
@@ -48,78 +38,120 @@ Amazon Sales/
   - numpy
   - jupyter
 
-### Installation
-1. Clone the repository:
-```bash
-git clone [repository-url]
-```
+### DAX Measure Power BI
+Total Products = COUNTROWS('Amazon Sales')
+Average Rating = AVERAGE('Amazon Sales'[rating])
+Average Discount = AVERAGE('Amazon Sales'[discount_percentage])
+Total Categories = DISTINCTCOUNT('Amazon Sales'[category])
 
-2. Install required packages:
-```bash
-pip install -r requirements.txt
-```
+// Price Metrics
+Total Original Price = SUM('Amazon Sales'[actual_price])
+Total Discounted Price = SUM('Amazon Sales'[discounted_price])
+Total Savings = [Total Original Price] - [Total Discounted Price]
+Average Savings = AVERAGE('Amazon Sales'[actual_price] - 'Amazon Sales'[discounted_price])
+Average Price = AVERAGE('Amazon Sales'[discounted_price])
 
-### Usage
-1. Data Cleaning:
-   - Open `Amazon_Data_Cleaning_Basic.ipynb` in Jupyter Notebook
-   - Run the cells to clean the dataset
-   - The cleaned data will be saved as `amazon_cleaned.csv`
+// Rating Metrics
+Products with High Ratings = CALCULATE(
+    COUNT('Amazon Sales'[product_id]),
+    'Amazon Sales'[rating] >= 4
+)
+High Rating Percentage = DIVIDE(
+    [Products with High Ratings],
+    [Total Products],
+    0
+)
 
-2. Analysis:
-   - Review the insights in `Amazon_Sales_Insights_Report.md`
-   - Use the cleaned dataset for further analysis
+// Review Metrics
+Total Reviews = SUM('Amazon Sales'[rating_count])
+Average Reviews per Product = DIVIDE(
+    [Total Reviews],
+    [Total Products],
+    0
+)
 
-## Key Insights
+// Category Analysis
+Products per Category = 
+ADDCOLUMNS(
+    VALUES('Amazon Sales'[category]),
+    "Product Count", CALCULATE(COUNT('Amazon Sales'[product_id]))
+)
 
-### For Sellers
-- Optimal pricing strategies
-- Discount effectiveness
-- Category performance
-- Product improvement opportunities
+Category Average Rating = 
+AVERAGEX(
+    VALUES('Amazon Sales'[category]),
+    CALCULATE(AVERAGE('Amazon Sales'[rating]))
+)
 
-### For Customers
-- Best times to purchase
-- Price range recommendations
-- Category-specific insights
-- Value for money indicators
+// Price Range Groups
+Price Range = 
+SWITCH(
+    TRUE(),
+    'Amazon Sales'[discounted_price] <= 500, "Budget (≤500)",
+    'Amazon Sales'[discounted_price] <= 2000, "Mid-Range (501-2000)",
+    'Amazon Sales'[discounted_price] <= 5000, "Premium (2001-5000)",
+    "Luxury (>₹5000)"
+)
 
-## Data Dictionary
+// Discount Range Groups
+Discount Range = 
+SWITCH(
+    TRUE(),
+    'Amazon Sales'[discount_percentage] <= 10, "Low (≤10%)",
+    'Amazon Sales'[discount_percentage] <= 30, "Medium (11-30%)",
+    'Amazon Sales'[discount_percentage] <= 50, "High (31-50%)",
+    "Very High (>50%)"
+)
 
-### Main Columns
-- `product_name`: Name of the product
-- `discounted_price`: Current selling price
-- `actual_price`: Original price
-- `discount_percentage`: Discount offered
-- `rating`: Product rating (1-5)
-- `rating_count`: Number of ratings
-- `category`: Product category
-- `subcategory`: Product subcategory
+// Top Products
+Top Rated Products = 
+TOPN(
+    10,
+    'Amazon Sales',
+    'Amazon Sales'[rating],
+    'Amazon Sales'[rating_count]
+)
 
-### Calculated Columns
-- `savings_amount`: Difference between actual and discounted price
-- `savings_percentage`: Percentage of savings
-- `price_range`: Categorized price range
-- `discount_range`: Categorized discount level
+Best Value Products = 
+TOPN(
+    10,
+    'Amazon Sales',
+    'Amazon Sales'[discount_percentage]
+)
 
-## Future Enhancements
-1. Time-series analysis of price trends
-2. Seasonal discount patterns
-3. Category-specific customer behavior
-4. Competitive analysis within price ranges
-5. Impact of ratings on sales performance
+// Calculated Columns
+Savings Amount = 'Amazon Sales'[actual_price] - 'Amazon Sales'[discounted_price]
+Savings Percentage = DIVIDE(
+    'Amazon Sales'[actual_price] - 'Amazon Sales'[discounted_price],
+    'Amazon Sales'[actual_price],
+    0
+)
 
-## Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
+// KPI Calculations
+Rating KPI Status = 
+IF(
+    [Average Rating] >= 4, 1,
+    IF([Average Rating] >= 3, 0, -1)
+)
 
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+Discount KPI Status = 
+IF(
+    [Average Discount] >= 25, 1,
+    IF([Average Discount] >= 15, 0, -1)
+)
 
-## Acknowledgments
-- Amazon for providing the dataset
-- Contributors and maintainers of the project
+// Dynamic Ranking
+Product Rank by Rating = 
+RANK.EQ(
+    'Amazon Sales'[rating],
+    'Amazon Sales'[rating],
+    DESC
+)
 
-## Contact
-For any questions or suggestions, please open an issue in the repository.
+Category Rank by Sales = 
+RANKX(
+    ALL('Amazon Sales'[category]),
+    CALCULATE(SUM('Amazon Sales'[discounted_price]))
+) 
 
----
-*Note: This project is for educational and analytical purposes only. All data used is publicly available and anonymized.* 
+
